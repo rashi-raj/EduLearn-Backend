@@ -1,0 +1,13 @@
+com\edulearn\notification\consumer\NotificationConsumer.class
+com\edulearn\notification\config\SwaggerConfig.class
+com\edulearn\notification\controller\NotificationController.class
+com\edulearn\notification\dto\NotificationResponse$NotificationResponseBuilder.class
+com\edulearn\notification\service\impl\NotificationServiceImpl.class
+com\edulearn\notification\dto\NotificationResponse.class
+com\edulearn\notification\entity\Notification.class
+com\edulearn\notification\EdulearnNotificationServiceApplication.class
+com\edulearn\notification\repository\NotificationRepository.class
+com\edulearn\notification\service\NotificationService.class
+com\edulearn\notification\dto\NotificationEvent.class
+com\edulearn\notification\entity\Notification$NotificationBuilder.class
+com\edulearn\notification\dto\NotificationEvent$NotificationEventBuilder.class
