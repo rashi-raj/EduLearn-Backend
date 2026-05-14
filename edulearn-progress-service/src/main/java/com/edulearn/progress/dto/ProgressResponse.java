@@ -20,4 +20,5 @@ public class ProgressResponse {
     private int totalLessons;
     private double progressPercent;
     private boolean certificateEligible;
+    private java.util.Set<UUID> completedLessonIds;
 }

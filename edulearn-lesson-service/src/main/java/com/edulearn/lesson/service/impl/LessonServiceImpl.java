@@ -34,9 +34,12 @@ public class LessonServiceImpl implements LessonService {
 
         Lesson lesson = Lesson.builder()
                 .title(request.getTitle())
+                .contentType(request.getContentType())
+                .contentUrl(request.getContentUrl())
                 .description(request.getDescription())
                 .courseId(request.getCourseId())
                 .orderIndex(request.getOrderIndex())
+                .isPreview(request.getIsPreview())
                 .build();
 
         Lesson savedLesson = lessonRepository.save(lesson);
@@ -193,6 +196,7 @@ public class LessonServiceImpl implements LessonService {
                 .contentType(lesson.getContentType())
                 .durationMinutes(lesson.getDurationMinutes())
                 .isPreview(lesson.getIsPreview())
+                .resources(java.util.Collections.emptyList())
                 .build();
     }
 

@@ -15,6 +15,8 @@ public interface AuthService {
 
     UserResponse getCurrentUser(String email);
     
+    UserResponse getUserById(String userId);
+    
     AuthResponse forgotPassword(ForgotPasswordRequest request);
 
     AuthResponse resetPassword(ResetPasswordRequest request);

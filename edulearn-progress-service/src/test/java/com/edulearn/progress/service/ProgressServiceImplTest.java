@@ -3,6 +3,7 @@ package com.edulearn.progress.service;
 import com.edulearn.progress.dto.ProgressResponse;
 import com.edulearn.progress.entity.LessonProgress;
 import com.edulearn.progress.entity.Progress;
+import com.edulearn.progress.event.NotificationEventPublisher;
 import com.edulearn.progress.repository.CertificateRepository;
 import com.edulearn.progress.repository.LessonProgressRepository;
 import com.edulearn.progress.repository.ProgressRepository;
@@ -10,12 +11,12 @@ import com.edulearn.progress.service.impl.ProgressServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Collections;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,7 +39,9 @@ class ProgressServiceImplTest {
     @Mock
     private RestTemplate restTemplate;
 
-    @InjectMocks
+    @Mock
+    private NotificationEventPublisher notificationEventPublisher;
+
     private ProgressServiceImpl progressService;
 
     private UUID studentId;
@@ -47,6 +50,14 @@ class ProgressServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        progressService = new ProgressServiceImpl(
+                progressRepository,
+                lessonProgressRepository,
+                null, certificateRepository,
+                restTemplate,
+                notificationEventPublisher
+        );
+
         studentId = UUID.randomUUID();
         courseId = UUID.randomUUID();
         lessonId = UUID.randomUUID();
@@ -56,12 +67,18 @@ class ProgressServiceImplTest {
     void completeLesson_shouldSaveProgress_whenNotAlreadyCompleted() {
         when(lessonProgressRepository.existsByStudentIdAndLessonId(studentId, lessonId))
                 .thenReturn(false);
-        when(lessonProgressRepository.save(any(LessonProgress.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        when(lessonProgressRepository.save(any(LessonProgress.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
         when(lessonProgressRepository.findByStudentIdAndCourseId(studentId, courseId))
-                .thenReturn(Collections.emptyList());
+                .thenReturn(List.of(buildCompletedLessonProgress()));
+
         when(progressRepository.findByStudentIdAndCourseId(studentId, courseId))
                 .thenReturn(Optional.empty());
-        when(progressRepository.save(any(Progress.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        when(progressRepository.save(any(Progress.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         progressService.completeLesson(studentId, courseId, lessonId);
 
@@ -77,6 +94,7 @@ class ProgressServiceImplTest {
         progressService.completeLesson(studentId, courseId, lessonId);
 
         verify(lessonProgressRepository, never()).save(any(LessonProgress.class));
+        verify(progressRepository, never()).save(any(Progress.class));
     }
 
     @Test
@@ -91,16 +109,41 @@ class ProgressServiceImplTest {
                 .completed(false)
                 .build();
 
+        List<LessonProgress> completedLessons = List.of(
+                buildCompletedLessonProgress(),
+                buildCompletedLessonProgress(),
+                buildCompletedLessonProgress(),
+                buildCompletedLessonProgress(),
+                buildCompletedLessonProgress()
+        );
+
         when(progressRepository.findByStudentIdAndCourseId(studentId, courseId))
                 .thenReturn(Optional.of(progress));
+
         when(lessonProgressRepository.findByStudentIdAndCourseId(studentId, courseId))
-                .thenReturn(Collections.nCopies(5, new LessonProgress()));
-        when(progressRepository.save(any(Progress.class))).thenAnswer(inv -> inv.getArgument(0));
+                .thenReturn(completedLessons);
+
+        when(progressRepository.save(any(Progress.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         ProgressResponse response = progressService.getProgress(studentId, courseId);
 
         assertNotNull(response);
         assertEquals(studentId, response.getStudentId());
         assertEquals(courseId, response.getCourseId());
+        assertEquals(5, response.getCompletedLessonIds().size());
+
+        verify(progressRepository).save(any(Progress.class));
+    }
+
+    private LessonProgress buildCompletedLessonProgress() {
+        return LessonProgress.builder()
+                .lessonProgressId(UUID.randomUUID())
+                .studentId(studentId)
+                .courseId(courseId)
+                .lessonId(UUID.randomUUID())
+                .completed(true)
+                .completedAt(LocalDateTime.now())
+                .build();
     }
 }

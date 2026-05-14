@@ -29,11 +29,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -128,7 +133,11 @@ public class AuthServiceImpl implements AuthService {
                 List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
         );
 
-        String token = jwtService.generateToken(userDetails);
+        Map<String, Object> extraClaims = new HashMap<>();
+        String roleName = user.getRole().name();
+        extraClaims.put("role", roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName);
+
+        String token = jwtService.generateToken(extraClaims, userDetails);
 
         return AuthResponse.builder()
                 .token(token)
@@ -142,6 +151,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return mapToUserResponse(user);
+    }
+
+    @Override
+    public UserResponse getUserById(String userId) {
+        User user = userRepository.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         return mapToUserResponse(user);
@@ -190,7 +207,12 @@ public class AuthServiceImpl implements AuthService {
                         + "This link will expire in 15 minutes."
         );
 
-        mailSender.send(mailMessage);
+        try {
+            mailSender.send(mailMessage);
+        } catch (org.springframework.mail.MailException e) {
+            log.error("SMTP Configuration Error: Failed to send password reset email.");
+            log.warn("For development purposes, here is the reset link: {}", resetLink);
+        }
 
         return AuthResponse.builder()
                 .email(user.getEmail())

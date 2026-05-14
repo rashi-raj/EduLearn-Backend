@@ -14,33 +14,28 @@ public class NotificationConsumer {
 
     private final NotificationService notificationService;
 
-    @KafkaListener(topics = "edulearn.user.events", groupId = "notification-group")
-    public void handleUserEvent(NotificationEvent event) {
-        log.info("Received user event: type={}, userId={}", event.getEventType(), event.getUserId());
+    @KafkaListener(
+        topics = {
+            "edulearn.user.events",
+            "edulearn.course.events",
+            "edulearn.enrollment.events",
+            "edulearn.assessment.events",
+            "edulearn.payment.events",
+            "edulearn.progress.events"
+        }, 
+        groupId = "notification-group", 
+        concurrency = "1"
+    )
+    public void handleNotificationEvent(NotificationEvent event) {
+        log.info("Received notification event: type={}, userId={}, title={}", 
+            event.getEventType(), event.getUserId(), event.getTitle());
         notificationService.createNotification(event);
     }
 
-    @KafkaListener(topics = "edulearn.course.events", groupId = "notification-group")
-    public void handleCourseEvent(NotificationEvent event) {
-        log.info("Received course event: type={}, userId={}", event.getEventType(), event.getUserId());
+    @KafkaListener(topics = "edulearn.progress.events", groupId = "notification-group", concurrency = "1")
+    public void handleProgressEvent(NotificationEvent event) {
+        log.info("Received progress event: type={}, userId={}", event.getEventType(), event.getUserId());
         notificationService.createNotification(event);
     }
 
-    @KafkaListener(topics = "edulearn.enrollment.events", groupId = "notification-group")
-    public void handleEnrollmentEvent(NotificationEvent event) {
-        log.info("Received enrollment event: type={}, userId={}", event.getEventType(), event.getUserId());
-        notificationService.createNotification(event);
-    }
-
-    @KafkaListener(topics = "edulearn.assessment.events", groupId = "notification-group")
-    public void handleAssessmentEvent(NotificationEvent event) {
-        log.info("Received assessment event: type={}, userId={}", event.getEventType(), event.getUserId());
-        notificationService.createNotification(event);
-    }
-
-    @KafkaListener(topics = "edulearn.payment.events", groupId = "notification-group")
-    public void handlePaymentEvent(NotificationEvent event) {
-        log.info("Received payment event: type={}, userId={}", event.getEventType(), event.getUserId());
-        notificationService.createNotification(event);
-    }
 }

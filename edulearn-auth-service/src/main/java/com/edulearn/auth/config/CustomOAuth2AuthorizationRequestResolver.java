@@ -8,6 +8,8 @@ import org.springframework.security.oauth2.client.web.DefaultOAuth2Authorization
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 
+import java.util.Map;
+
 public class CustomOAuth2AuthorizationRequestResolver implements OAuth2AuthorizationRequestResolver {
 
     public static final String GOOGLE_SELECTED_ROLE = "GOOGLE_SELECTED_ROLE";
@@ -35,7 +37,7 @@ public class CustomOAuth2AuthorizationRequestResolver implements OAuth2Authoriza
         return customize(request, authorizationRequest);
     }
 
-    private OAuth2AuthorizationRequest customize(
+    OAuth2AuthorizationRequest customize(
             HttpServletRequest request,
             OAuth2AuthorizationRequest authorizationRequest
     ) {
@@ -69,6 +71,13 @@ public class CustomOAuth2AuthorizationRequestResolver implements OAuth2Authoriza
             }
         }
 
-        return authorizationRequest;
+        // Force Google to show account selection page every time
+        Map<String, Object> additionalParameters = new java.util.LinkedHashMap<>(authorizationRequest.getAdditionalParameters());
+        additionalParameters.put("prompt", "select_account");
+        additionalParameters.put("access_type", "offline");
+
+        return OAuth2AuthorizationRequest.from(authorizationRequest)
+                .additionalParameters(additionalParameters)
+                .build();
     }
 }

@@ -10,6 +10,8 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
 
   datasource:
     url: jdbc:mysql://localhost:3306/edulearn_enrollment_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC

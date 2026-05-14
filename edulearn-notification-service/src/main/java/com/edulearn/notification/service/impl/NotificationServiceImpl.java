@@ -1,13 +1,17 @@
 package com.edulearn.notification.service.impl;
 
+import com.edulearn.notification.client.AuthServiceClient;
 import com.edulearn.notification.dto.NotificationEvent;
 import com.edulearn.notification.dto.NotificationResponse;
+import com.edulearn.notification.dto.UserResponse;
 import com.edulearn.notification.entity.Notification;
 import com.edulearn.notification.repository.NotificationRepository;
 import com.edulearn.notification.service.NotificationService;
+import com.edulearn.notification.service.WhatsAppService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +23,8 @@ import java.util.UUID;
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final AuthServiceClient authServiceClient;
+    private final WhatsAppService whatsappService;
 
     @Override
     public void createNotification(NotificationEvent event) {
@@ -35,6 +41,26 @@ public class NotificationServiceImpl implements NotificationService {
 
         notificationRepository.save(notification);
         log.info("Notification saved for userId={}", event.getUserId());
+
+        // WhatsApp Notification logic for specific events
+        triggerWhatsAppNotification(event);
+    }
+
+    private void triggerWhatsAppNotification(NotificationEvent event) {
+        String type = event.getEventType();
+        if ("USER_REGISTERED".equals(type) || "ENROLLMENT".equals(type) || "PAYMENT_SUCCESS".equals(type) || "CERTIFICATION".equals(type)) {
+            try {
+                UserResponse user = authServiceClient.getUserById(event.getUserId());
+                if (user != null && user.getMobile() != null && !user.getMobile().isEmpty()) {
+                    String whatsappBody = String.format("*EduLearn Alert*\n\n%s\n\n%s", event.getTitle(), event.getMessage());
+                    whatsappService.sendWhatsAppMessage(user.getMobile(), whatsappBody);
+                } else {
+                    log.warn("Could not send WhatsApp message: User mobile number not found for userId={}", event.getUserId());
+                }
+            } catch (Exception e) {
+                log.error("Error fetching user details for WhatsApp notification: {}", e.getMessage());
+            }
+        }
     }
 
     @Override
@@ -70,6 +96,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional
     public void markAllAsRead(String userId) {
         log.info("Marking all notifications as read for userId={}", userId);
         List<Notification> unread = notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(userId);

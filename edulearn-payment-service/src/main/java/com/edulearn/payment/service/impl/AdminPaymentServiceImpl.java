@@ -1,13 +1,15 @@
 package com.edulearn.payment.service.impl;
 
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import com.edulearn.payment.dto.AdminPaymentResponse;
 import com.edulearn.payment.entity.Payment;
 import com.edulearn.payment.repository.PaymentRepository;
 import com.edulearn.payment.service.AdminPaymentService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +20,14 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
     @Override
     public List<AdminPaymentResponse> getAllPayments() {
         return paymentRepository.findAll()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
+    public List<AdminPaymentResponse> getPaymentsByStatus(String status) {
+        return paymentRepository.findByPaymentStatus(com.edulearn.payment.entity.PaymentStatus.valueOf(status))
                 .stream()
                 .map(this::mapToResponse)
                 .toList();

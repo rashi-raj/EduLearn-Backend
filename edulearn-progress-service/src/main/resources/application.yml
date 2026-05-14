@@ -5,6 +5,14 @@ spring:
   application:
     name: EDULEARN-PROGRESS-SERVICE
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
   datasource:
     url: jdbc:mysql://localhost:3306/edulearn_progress_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
     username: root

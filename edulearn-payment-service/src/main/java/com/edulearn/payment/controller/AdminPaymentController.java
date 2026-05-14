@@ -26,4 +26,11 @@ public class AdminPaymentController {
         log.info("Admin fetching all payments");
         return ResponseEntity.ok(adminPaymentService.getAllPayments());
     }
+
+    @Operation(summary = "Get payments by status (admin)")
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<AdminPaymentResponse>> getPaymentsByStatus(@PathVariable String status) {
+        log.info("Admin fetching payments with status={}", status);
+        return ResponseEntity.ok(adminPaymentService.getPaymentsByStatus(status));
+    }
 }

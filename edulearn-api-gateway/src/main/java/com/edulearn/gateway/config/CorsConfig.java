@@ -17,9 +17,13 @@ public class CorsConfig {
 
         config.setAllowedOrigins(List.of("http://localhost:4200"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
+        // Explicit headers required — cannot use * with allowCredentials
+        config.setAllowedHeaders(List.of(
+                "Authorization", "Content-Type", "Accept",
+                "X-Requested-With", "X-User-Email", "X-User-Role", "X-Gateway-Verified"
+        ));
         config.setExposedHeaders(List.of("Authorization"));
+        // No allowCredentials — JWT goes in Authorization header, not cookies
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

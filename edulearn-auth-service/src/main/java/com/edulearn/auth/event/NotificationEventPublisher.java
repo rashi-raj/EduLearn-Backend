@@ -14,7 +14,11 @@ public class NotificationEventPublisher {
     private static final String TOPIC = "edulearn.user.events";
 
     public void publish(NotificationEvent event) {
-        log.info("Publishing event to {}: type={}, userId={}", TOPIC, event.getEventType(), event.getUserId());
-        kafkaTemplate.send(TOPIC, event.getUserId(), event);
+        try {
+            log.info("Publishing event to {}: type={}, userId={}", TOPIC, event.getEventType(), event.getUserId());
+            kafkaTemplate.send(TOPIC, event.getUserId(), event);
+        } catch (Exception e) {
+            log.error("Failed to publish notification event to Kafka: {}", e.getMessage());
+        }
     }
 }

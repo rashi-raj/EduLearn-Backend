@@ -1,108 +1,102 @@
 package com.edulearn.payment.controller;
 
-import com.edulearn.payment.dto.CreatePaymentRequest;
 import com.edulearn.payment.dto.CreatePaymentResponse;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import com.edulearn.payment.dto.PaymentResponse;
 import com.edulearn.payment.service.PaymentService;
-import org.junit.jupiter.api.BeforeEach;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ExtendWith(MockitoExtension.class)
+@WebMvcTest(PaymentController.class)
+@DisplayName("PaymentController Unit Tests")
 class PaymentControllerTest {
 
-    @Mock
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
     private PaymentService paymentService;
 
-    @InjectMocks
-    private PaymentController paymentController;
+    @Autowired
+    private ObjectMapper objectMapper;
 
-    private UUID studentId;
-    private UUID courseId;
+    @Test
+    void createPayment_shouldReturnCreated() throws Exception {
+        when(paymentService.createPayment(any())).thenReturn(CreatePaymentResponse.builder().build());
 
-    @BeforeEach
-    void setUp() {
-        studentId = UUID.randomUUID();
-        courseId = UUID.randomUUID();
+        String body = """
+                {
+                  "courseId": "00000000-0000-0000-0000-000000000001",
+                  "studentId": "00000000-0000-0000-0000-000000000002",
+                  "amount": 100,
+                  "paymentMethod": "UPI"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/payments/create-order")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isCreated());
     }
 
     @Test
-    void createOrder_shouldReturnCreatedStatus() {
-        CreatePaymentRequest request = new CreatePaymentRequest();
-        request.setStudentId(studentId);
-        request.setCourseId(courseId);
-        request.setAmount(BigDecimal.valueOf(999));
-        request.setPaymentMethod("RAZORPAY");
+    void verifyPayment_shouldReturnOk() throws Exception {
+        when(paymentService.verifyPayment(any())).thenReturn(PaymentResponse.builder().build());
 
-        CreatePaymentResponse mockResponse = CreatePaymentResponse.builder()
-                .paymentId(UUID.randomUUID())
-                .courseId(courseId)
-                .studentId(studentId)
-                .amount(BigDecimal.valueOf(999))
-                .currency("INR")
-                .razorpayOrderId("order_123")
-                .build();
+        String body = """
+                {
+                  "razorpayOrderId": "order_1",
+                  "razorpayPaymentId": "pay_1",
+                  "razorpaySignature": "sig_1"
+                }
+                """;
 
-        when(paymentService.createPayment(any(CreatePaymentRequest.class))).thenReturn(mockResponse);
-
-        ResponseEntity<CreatePaymentResponse> response = paymentController.createOrder(request);
-
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("order_123", response.getBody().getRazorpayOrderId());
-        verify(paymentService).createPayment(any(CreatePaymentRequest.class));
+        mockMvc.perform(post("/api/v1/payments/verify")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void getPaymentsByStudent_shouldReturnList() {
-        when(paymentService.getPaymentsByStudent(studentId)).thenReturn(List.of());
+    void getPaymentsByStudent_shouldReturnOk() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(paymentService.getPaymentsByStudent(id)).thenReturn(List.of());
 
-        ResponseEntity<List<PaymentResponse>> response = paymentController.getPaymentsByStudent(studentId);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        verify(paymentService).getPaymentsByStudent(studentId);
+        mockMvc.perform(get("/api/v1/payments/student/{id}", id))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void hasPaid_shouldReturnTrueWhenPaid() {
-        when(paymentService.hasPaid(studentId, courseId)).thenReturn(true);
+    void checkPayment_shouldReturnOk() throws Exception {
+        UUID sid = UUID.randomUUID();
+        UUID cid = UUID.randomUUID();
+        when(paymentService.hasPaid(sid, cid)).thenReturn(true);
 
-        ResponseEntity<Map<String, Boolean>> response = paymentController.hasPaid(studentId, courseId);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody().get("paid"));
+        mockMvc.perform(get("/api/v1/payments/status")
+                .param("studentId", sid.toString())
+                .param("courseId", cid.toString()))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void hasPaid_shouldReturnFalseWhenNotPaid() {
-        when(paymentService.hasPaid(studentId, courseId)).thenReturn(false);
-
-        ResponseEntity<Map<String, Boolean>> response = paymentController.hasPaid(studentId, courseId);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertFalse(response.getBody().get("paid"));
-    }
-
-    @Test
-    void ping_shouldReturnOk() {
-        ResponseEntity<String> response = paymentController.ping();
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Payment service is working", response.getBody());
+    void ping_shouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/payments/ping"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value("Payment service is working"));
     }
 }

@@ -74,6 +74,13 @@ logging:
     org.springframework.cloud.gateway: INFO
     org.springdoc: INFO
 
+# JWT — must match Auth Service secret exactly
+application:
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET_KEY}
+      expiration: 86400000  # 24 hours in ms
+
 springdoc:
   api-docs:
     enabled: true

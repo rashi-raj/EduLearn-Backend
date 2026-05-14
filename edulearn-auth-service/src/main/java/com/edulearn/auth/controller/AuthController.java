@@ -43,6 +43,12 @@ public class AuthController {
         return ResponseEntity.ok(authService.getCurrentUser(authentication.getName()));
     }
 
+    @Operation(summary = "Internal get user by ID")
+    @GetMapping("/internal/users/{userId}")
+    public ResponseEntity<UserResponse> getUserById(@PathVariable String userId) {
+        return ResponseEntity.ok(authService.getUserById(userId));
+    }
+
     @Operation(summary = "Health check endpoint")
     @GetMapping("/ping")
     public ResponseEntity<String> ping() {

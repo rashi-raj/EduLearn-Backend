@@ -12,12 +12,14 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class CourseServiceImpl implements CourseService {
 
@@ -211,6 +213,8 @@ public class CourseServiceImpl implements CourseService {
 
         course.setStatus(CourseStatus.PENDING_APPROVAL);
         course.setIsPublished(false);
+        // Ensure instructorId is preserved explicitly
+        course.setInstructorId(course.getInstructorId());
 
         Course updatedCourse = courseRepository.save(course);
         log.info("Course submitted for approval successfully with ID: {}", courseId);
@@ -241,42 +245,38 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public CourseResponse reviewCourse(UUID courseId, String action) {
+        System.out.println(">>> BACKEND: Reviewing course " + courseId + " with action: " + action);
         log.info("Reviewing course with ID: {} and action: {}", courseId, action);
 
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> {
-                    log.error("Course not found for review with ID: {}", courseId);
-                    return new RuntimeException("Course not found");
-                });
-
-        if (course.getStatus() != CourseStatus.PENDING_APPROVAL) {
-            log.error("Only pending approval courses can be reviewed. Course ID: {}", courseId);
-            throw new RuntimeException("Only pending approval courses can be reviewed");
-        }
+                .orElseThrow(() -> new RuntimeException("Course not found"));
 
         if ("APPROVE".equalsIgnoreCase(action)) {
             course.setStatus(CourseStatus.PUBLISHED);
             course.setIsPublished(true);
-            log.info("Course approved successfully with ID: {}", courseId);
-        } else if ("REJECT".equalsIgnoreCase(action)) {
+            System.out.println(">>> BACKEND: Course status updated to PUBLISHED");
+        } else {
             course.setStatus(CourseStatus.REJECTED);
             course.setIsPublished(false);
-            log.info("Course rejected successfully with ID: {}", courseId);
-        } else {
-            log.error("Invalid review action '{}' for course ID: {}", action, courseId);
-            throw new RuntimeException("Invalid action. Use APPROVE or REJECT");
+            System.out.println(">>> BACKEND: Course status updated to REJECTED");
         }
 
-        Course reviewedCourse = courseRepository.save(course);
+        Course saved = courseRepository.saveAndFlush(course);
+        System.out.println(">>> BACKEND: Course saved and flushed to DB");
 
-        notificationEventPublisher.publish(NotificationEvent.builder()
-                .eventType("APPROVE".equalsIgnoreCase(action) ? "COURSE_APPROVED" : "COURSE_REJECTED")
-                .userId(course.getInstructorId().toString())
-                .title("APPROVE".equalsIgnoreCase(action) ? "Course Approved!" : "Course Rejected")
-                .message("Your course '" + course.getTitle() + "' has been " + action.toLowerCase() + "d.")
-                .build());
+        try {
+            notificationEventPublisher.publish(NotificationEvent.builder()
+                    .eventType("APPROVE".equalsIgnoreCase(action) ? "COURSE_APPROVED" : "COURSE_REJECTED")
+                    .userId(saved.getInstructorId().toString())
+                    .title("APPROVE".equalsIgnoreCase(action) ? "Course Approved!" : "Course Rejected")
+                    .message("Your course '" + saved.getTitle() + "' has been " + action.toLowerCase() + "d.")
+                    .build());
+            System.out.println(">>> BACKEND: Notification sent to Kafka");
+        } catch (Exception e) {
+            System.err.println(">>> BACKEND ERROR: Kafka failed but proceeding: " + e.getMessage());
+        }
 
-        return mapToResponse(reviewedCourse);
+        return mapToResponse(saved);
     }
 
     @Override

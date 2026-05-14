@@ -7,7 +7,6 @@ import com.edulearn.enrollment.event.NotificationEvent;
 import com.edulearn.enrollment.event.NotificationEventPublisher;
 import com.edulearn.enrollment.repository.EnrollmentRepository;
 import com.edulearn.enrollment.service.EnrollmentService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +15,6 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EnrollmentServiceImpl implements EnrollmentService {
 
@@ -27,6 +25,14 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationEventPublisher notificationEventPublisher;
+
+    public EnrollmentServiceImpl(
+            EnrollmentRepository enrollmentRepository,
+            NotificationEventPublisher notificationEventPublisher
+    ) {
+        this.enrollmentRepository = enrollmentRepository;
+        this.notificationEventPublisher = notificationEventPublisher;
+    }
 
     @Override
     public EnrollmentResponse enroll(EnrollmentRequest request) {
@@ -51,12 +57,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 .build();
 
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
+
         log.info("Enrollment saved successfully with enrollmentId={}", savedEnrollment.getEnrollmentId());
 
         notificationEventPublisher.publish(NotificationEvent.builder()
-                .eventType("ENROLLMENT_CREATED")
+                .eventType("ENROLLMENT")
                 .userId(request.getStudentId().toString())
-                .title("Enrollment Successful!")
+                .title("Enrollment Successful! 📚")
                 .message("You have been enrolled in a new course. Start learning now!")
                 .build());
 
@@ -72,12 +79,14 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         enrollment.setStatus(STATUS_CANCELLED);
         enrollmentRepository.save(enrollment);
+
         log.info("Enrollment cancelled for studentId={} and courseId={}", studentId, courseId);
     }
 
     @Override
     public List<EnrollmentResponse> getEnrollmentsByStudent(UUID studentId) {
         log.debug("Fetching enrollments by studentId={}", studentId);
+
         return enrollmentRepository.findByStudentId(studentId)
                 .stream()
                 .map(this::mapToResponse)
@@ -87,6 +96,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     public List<EnrollmentResponse> getEnrollmentsByCourse(UUID courseId) {
         log.debug("Fetching enrollments by courseId={}", courseId);
+
         return enrollmentRepository.findByCourseId(courseId)
                 .stream()
                 .map(this::mapToResponse)
@@ -105,10 +115,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (progressPercent >= 100.0) {
             enrollment.setStatus(STATUS_COMPLETED);
             enrollment.setCompletedAt(LocalDateTime.now());
+
             log.info("Enrollment marked completed automatically for studentId={} and courseId={}", studentId, courseId);
         }
 
-        return mapToResponse(enrollmentRepository.save(enrollment));
+        Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
+
+        return mapToResponse(savedEnrollment);
     }
 
     @Override
@@ -122,7 +135,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollment.setStatus(STATUS_COMPLETED);
         enrollment.setCompletedAt(LocalDateTime.now());
 
-        return mapToResponse(enrollmentRepository.save(enrollment));
+        Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
+
+        return mapToResponse(savedEnrollment);
     }
 
     @Override
@@ -158,18 +173,22 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         boolean active = enrollment.getExpiresAt().isAfter(LocalDateTime.now());
 
         enrollment.setAccessExpired(!active);
+
         if (!active && !STATUS_COMPLETED.equalsIgnoreCase(enrollment.getStatus())) {
             enrollment.setStatus(STATUS_EXPIRED);
         }
 
         enrollmentRepository.save(enrollment);
+
         log.debug("Active access result for studentId={} and courseId={} is {}", studentId, courseId, active);
+
         return active;
     }
 
     @Override
     public long getEnrollmentCount(UUID courseId) {
         log.debug("Getting enrollment count for courseId={}", courseId);
+
         return enrollmentRepository.countByCourseId(courseId);
     }
 

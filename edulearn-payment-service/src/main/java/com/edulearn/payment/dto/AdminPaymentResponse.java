@@ -1,7 +1,6 @@
 package com.edulearn.payment.dto;
 
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -9,6 +8,9 @@ import java.util.UUID;
 import com.edulearn.payment.entity.PaymentStatus;
 
 @Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class AdminPaymentResponse {
     private UUID paymentId;

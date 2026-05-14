@@ -18,6 +18,20 @@
 		<java.version>17</java.version>
 		<spring-cloud.version>2023.0.3</spring-cloud.version>
 		<springdoc.version>2.5.0</springdoc.version>
+
+		<!-- JaCoCo -->
+		<jacoco.version>0.8.11</jacoco.version>
+		<jacoco.report.path>${project.build.directory}/jacoco.exec</jacoco.report.path>
+
+		<!-- SonarQube -->
+		<sonar.projectKey>edulearn-assessment-service</sonar.projectKey>
+		<sonar.projectName>edulearn-assessment-service</sonar.projectName>
+		<sonar.host.url>http://localhost:9000</sonar.host.url>
+		<sonar.language>java</sonar.language>
+		<sonar.java.source>17</sonar.java.source>
+		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+		<sonar.exclusions>**/dto/**,**/config/**,**/entity/**,**/event/**,**/exception/**,**/*Application.java</sonar.exclusions>
+		<sonar.coverage.exclusions>**/dto/**,**/config/**,**/entity/**,**/event/**,**/exception/**,**/*Application.java</sonar.coverage.exclusions>
 	</properties>
 
 	<dependencies>
@@ -73,6 +87,12 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>net.bytebuddy</groupId>
+			<artifactId>byte-buddy</artifactId>
+			<version>1.15.3</version>
+		</dependency>
 	</dependencies>
 
 	<dependencyManagement>
@@ -105,6 +125,8 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
+					<source>17</source>
+					<target>17</target>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>org.projectlombok</groupId>
@@ -113,6 +135,53 @@
 						</path>
 					</annotationProcessorPaths>
 				</configuration>
+			</plugin>
+
+			<!-- JaCoCo Maven Plugin -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<executions>
+					<execution>
+						<id>jacoco-prepare-agent</id>
+						<goals><goal>prepare-agent</goal></goals>
+						<configuration><destFile>${jacoco.report.path}</destFile></configuration>
+					</execution>
+					<execution>
+						<id>jacoco-report</id>
+						<phase>verify</phase>
+						<goals><goal>report</goal></goals>
+						<configuration>
+							<dataFile>${jacoco.report.path}</dataFile>
+							<outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Maven Surefire Plugin -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.1.2</version>
+				<configuration>
+					<argLine>
+						@{argLine}
+						-XX:+EnableDynamicAgentLoading
+						-Xshare:off
+						--add-opens java.base/java.lang=ALL-UNNAMED
+						--add-opens java.base/java.util=ALL-UNNAMED
+						--add-opens java.base/java.time=ALL-UNNAMED
+					</argLine>
+				</configuration>
+			</plugin>
+
+			<!-- SonarQube Maven Scanner -->
+			<plugin>
+				<groupId>org.sonarsource.scanner.maven</groupId>
+				<artifactId>sonar-maven-plugin</artifactId>
+				<version>3.11.0.3922</version>
 			</plugin>
 		</plugins>
 	</build>

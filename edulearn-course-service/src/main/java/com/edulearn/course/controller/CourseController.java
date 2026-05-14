@@ -90,13 +90,18 @@ public class CourseController {
         return ResponseEntity.ok(courseService.publishCourse(courseId, request.getPublished()));
     }
 
-    @Operation(summary = "Admin review: approve or reject a course")
-    @PatchMapping("/{courseId}/review")
-    public ResponseEntity<CourseResponse> reviewCourse(
-            @PathVariable UUID courseId,
-            @Valid @RequestBody CourseApprovalActionRequest request
-    ) {
-        return ResponseEntity.ok(courseService.reviewCourse(courseId, request.getAction()));
+    @Operation(summary = "Approve a course")
+    @PutMapping("/{courseId}/approve")
+    public ResponseEntity<CourseResponse> approveCourse(@PathVariable UUID courseId) {
+        System.out.println(">>> CONTROLLER: Received /approve request for " + courseId);
+        return ResponseEntity.ok(courseService.reviewCourse(courseId, "APPROVE"));
+    }
+
+    @Operation(summary = "Reject a course")
+    @PutMapping("/{courseId}/reject")
+    public ResponseEntity<CourseResponse> rejectCourse(@PathVariable UUID courseId) {
+        System.out.println(">>> CONTROLLER: Received /reject request for " + courseId);
+        return ResponseEntity.ok(courseService.reviewCourse(courseId, "REJECT"));
     }
 
     @Operation(summary = "Delete a course")

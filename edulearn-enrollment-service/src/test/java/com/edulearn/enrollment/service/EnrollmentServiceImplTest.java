@@ -1,24 +1,26 @@
 package com.edulearn.enrollment.service;
 
-import com.edulearn.enrollment.dto.EnrollmentRequest;
-import com.edulearn.enrollment.dto.EnrollmentResponse;
-import com.edulearn.enrollment.entity.Enrollment;
-import com.edulearn.enrollment.repository.EnrollmentRepository;
-import com.edulearn.enrollment.service.impl.EnrollmentServiceImpl;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.edulearn.enrollment.dto.EnrollmentRequest;
+import com.edulearn.enrollment.dto.EnrollmentResponse;
+import com.edulearn.enrollment.entity.Enrollment;
+import com.edulearn.enrollment.event.NotificationEvent;
+import com.edulearn.enrollment.event.NotificationEventPublisher;
+import com.edulearn.enrollment.repository.EnrollmentRepository;
+import com.edulearn.enrollment.service.impl.EnrollmentServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
 class EnrollmentServiceImplTest {
@@ -26,7 +28,9 @@ class EnrollmentServiceImplTest {
     @Mock
     private EnrollmentRepository enrollmentRepository;
 
-    @InjectMocks
+    @Mock
+    private NotificationEventPublisher notificationEventPublisher;
+
     private EnrollmentServiceImpl enrollmentService;
 
     private UUID studentId;
@@ -35,6 +39,11 @@ class EnrollmentServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        enrollmentService = new EnrollmentServiceImpl(
+                enrollmentRepository,
+                notificationEventPublisher
+        );
+
         studentId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
@@ -61,7 +70,9 @@ class EnrollmentServiceImplTest {
         assertEquals(courseId, response.getCourseId());
         assertEquals("ACTIVE", response.getStatus());
         assertEquals(0.0, response.getProgressPercent());
+
         verify(enrollmentRepository).save(any(Enrollment.class));
+        verify(notificationEventPublisher).publish(any(NotificationEvent.class));
     }
 
     @Test
@@ -72,6 +83,7 @@ class EnrollmentServiceImplTest {
 
         assertEquals("Student is already enrolled in this course", exception.getMessage());
         verify(enrollmentRepository, never()).save(any(Enrollment.class));
+        verify(notificationEventPublisher, never()).publish(any(NotificationEvent.class));
     }
 
     @Test
