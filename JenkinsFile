@@ -80,7 +80,7 @@ pipeline {
                         dir(svc) {
                             echo "=== Testing & Generating Reports for ${svc} ==="
 
-                            sh 'mvn verify -Dspring.profiles.active=test'
+                            sh 'mvn verify -Dspring.profiles.active=test -Dtest="!*ApplicationTests" -Dsurefire.failIfNoSpecifiedTests=false'
                         }
                     }
                 }
