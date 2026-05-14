@@ -61,7 +61,7 @@ pipeline {
             }
         }
 
-        stage('Test Services') {
+        stage('Test & Report') {
             steps {
                 script {
                     def services = [
@@ -78,14 +78,9 @@ pipeline {
 
                     for (svc in services) {
                         dir(svc) {
-                            echo "=== Testing ${svc} ==="
+                            echo "=== Testing & Generating Reports for ${svc} ==="
 
-                            sh '''
-                                mvn test \
-                                -Dspring.profiles.active=test \
-                                -Dtest="!*ApplicationTests" \
-                                -Dsurefire.failIfNoSpecifiedTests=false
-                            '''
+                            sh 'mvn verify -Dspring.profiles.active=test'
                         }
                     }
                 }
