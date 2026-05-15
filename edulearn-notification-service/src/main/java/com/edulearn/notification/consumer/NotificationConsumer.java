@@ -31,11 +31,4 @@ public class NotificationConsumer {
             event.getEventType(), event.getUserId(), event.getTitle());
         notificationService.createNotification(event);
     }
-
-    @KafkaListener(topics = "edulearn.progress.events", groupId = "notification-group", concurrency = "1")
-    public void handleProgressEvent(NotificationEvent event) {
-        log.info("Received progress event: type={}, userId={}", event.getEventType(), event.getUserId());
-        notificationService.createNotification(event);
-    }
-
 }

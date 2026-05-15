@@ -32,23 +32,11 @@ public class PaymentService {
 
     public CreatePaymentResponse createPayment(CreatePaymentRequest request) {
         try {
-            System.out.println("========== RAZORPAY DEBUG ==========");
-            System.out.println("keyId = [" + razorpayProperties.getKeyId() + "]");
-            System.out.println("keySecret present = " +
-                    (razorpayProperties.getKeySecret() != null && !razorpayProperties.getKeySecret().isBlank()));
-            System.out.println("currency = [" + razorpayProperties.getCurrency() + "]");
-            System.out.println("amount received = " + request.getAmount());
-            System.out.println("====================================");
-
             String razorpayOrderId;
             String receipt = "rcpt_" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
 
-            // RESILIENCE: If keys are missing or placeholders, use a mock ID
-            if (razorpayProperties.getKeyId() == null || razorpayProperties.getKeyId().startsWith("${") ||
-                razorpayProperties.getKeyId().equals("PLACEHOLDER") ||
-                razorpayProperties.getKeySecret() == null || razorpayProperties.getKeySecret().startsWith("${") ||
-                razorpayProperties.getKeySecret().equals("PLACEHOLDER")) {
-                System.out.println("!!! RAZORPAY KEYS NOT SET - GENERATING MOCK ORDER ID !!!");
+            // RESILIENCE: Check if keys are set
+            if (isKeyMissing()) {
                 razorpayOrderId = "order_mock_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
             } else {
                 try {
@@ -65,7 +53,6 @@ public class PaymentService {
                     Order order = razorpay.orders.create(orderRequest);
                     razorpayOrderId = order.get("id");
                 } catch (Exception e) {
-                    System.err.println("!!! RAZORPAY API FAILED: " + e.getMessage() + " - FALLING BACK TO MOCK !!!");
                     razorpayOrderId = "order_mock_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
                 }
             }
@@ -99,39 +86,50 @@ public class PaymentService {
                     .build();
 
         } catch (Exception e) {
-            System.err.println("!!! PAYMENT SERVICE CRITICAL ERROR: " + e.getMessage());
-            e.printStackTrace();
             throw new RuntimeException("Failed to initiate payment: " + e.getMessage());
         }
     }
 
+    private boolean isKeyMissing() {
+        return razorpayProperties.getKeyId() == null || razorpayProperties.getKeyId().startsWith("${") ||
+               razorpayProperties.getKeyId().equals("PLACEHOLDER") ||
+               razorpayProperties.getKeySecret() == null || razorpayProperties.getKeySecret().startsWith("${") ||
+               razorpayProperties.getKeySecret().equals("PLACEHOLDER");
+    }
+
     public PaymentResponse verifyPayment(VerifyPaymentRequest request) {
-        System.out.println(">>> VERIFYING: OrderId=" + request.getRazorpayOrderId());
-        
-        // ULTIMATE BYPASS: Always return success to allow enrollment
-        Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
-                .orElse(null);
+        // SECURITY FIX: Verify signature if keys are present
+        if (!isKeyMissing()) {
+            try {
+                JSONObject attributes = new JSONObject();
+                attributes.put("razorpay_order_id", request.getRazorpayOrderId());
+                attributes.put("razorpay_payment_id", request.getRazorpayPaymentId());
+                attributes.put("razorpay_signature", request.getRazorpaySignature());
 
-        if (payment != null) {
-            payment.setPaymentStatus(PaymentStatus.PAID);
-            payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
-            payment.setRazorpaySignature(request.getRazorpaySignature());
-            payment.setPaidAt(LocalDateTime.now());
-            paymentRepository.saveAndFlush(payment);
-
-            // Publish Payment Notification
-            notificationEventPublisher.publish(NotificationEvent.builder()
-                    .eventType("PAYMENT_SUCCESS")
-                    .userId(payment.getStudentId().toString())
-                    .title("Payment Confirmed! \u2705")
-                    .message("Successfully purchased course: " + payment.getCourseTitle())
-                    .build());
-
-            return map(payment);
+                Utils.verifyPaymentSignature(attributes, razorpayProperties.getKeySecret());
+            } catch (Exception e) {
+                throw new RuntimeException("Invalid payment signature");
+            }
         }
+        
+        Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
+                .orElseThrow(() -> new RuntimeException("Payment record not found"));
 
-        // If not found, still return success status so frontend proceeds
-        return PaymentResponse.builder().paymentStatus("PAID").build();
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
+        payment.setRazorpaySignature(request.getRazorpaySignature());
+        payment.setPaidAt(LocalDateTime.now());
+        paymentRepository.saveAndFlush(payment);
+
+        // Publish Payment Notification
+        notificationEventPublisher.publish(NotificationEvent.builder()
+                .eventType("PAYMENT_SUCCESS")
+                .userId(payment.getStudentId().toString())
+                .title("Payment Confirmed! \u2705")
+                .message("Successfully purchased course: " + payment.getCourseTitle())
+                .build());
+
+        return map(payment);
     }
 
     public List<PaymentResponse> getPaymentsByStudent(UUID studentId) {
