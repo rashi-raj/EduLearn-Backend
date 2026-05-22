@@ -22,6 +22,7 @@ public class CreatePaymentRequest {
     private String studentName;
     private String studentEmail;
     private String courseTitle;
+    private UUID instructorId;
 
     @NotNull
     @Positive

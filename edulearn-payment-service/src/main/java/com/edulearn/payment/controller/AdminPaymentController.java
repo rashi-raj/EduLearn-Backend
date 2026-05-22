@@ -33,4 +33,12 @@ public class AdminPaymentController {
         log.info("Admin fetching payments with status={}", status);
         return ResponseEntity.ok(adminPaymentService.getPaymentsByStatus(status));
     }
+
+    @Operation(summary = "Redirect money to instructor (admin)")
+    @PostMapping("/{paymentId}/redirect")
+    public ResponseEntity<Void> redirectPaymentToInstructor(@PathVariable java.util.UUID paymentId) {
+        log.info("Admin redirecting payment ID: {} to instructor", paymentId);
+        adminPaymentService.redirectPaymentToInstructor(paymentId);
+        return ResponseEntity.ok().build();
+    }
 }

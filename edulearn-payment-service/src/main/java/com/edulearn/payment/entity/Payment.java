@@ -61,4 +61,9 @@ public class Payment {
     private LocalDateTime createdAt;
 
     private LocalDateTime paidAt;
+
+    private UUID instructorId;
+
+    @Column(name = "payout_status")
+    private String payoutStatus = "PENDING";
 }

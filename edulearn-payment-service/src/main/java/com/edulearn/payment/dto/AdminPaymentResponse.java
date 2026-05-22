@@ -28,4 +28,6 @@ public class AdminPaymentResponse {
     private String razorpayPaymentId;
     private LocalDateTime createdAt;
     private LocalDateTime paidAt;
+    private UUID instructorId;
+    private String payoutStatus;
 }

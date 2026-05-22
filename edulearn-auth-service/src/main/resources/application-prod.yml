@@ -1,5 +1,6 @@
 server:
   port: 8081
+  forward-headers-strategy: framework
 
 spring:
   application:
@@ -12,21 +13,14 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
   datasource:
-    url: jdbc:mysql://localhost:3306/edulearn_auth_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
+    url: jdbc:mysql://localhost:3306/edulearn_auth?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: edulearn
     password: ${DB_PASSWORD}
 
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
-  jackson:
-    serialization:
-      indent-output: true
+    show-sql: false
 
   security:
     oauth2:
@@ -59,29 +53,6 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-  endpoint:
-    health:
-      show-details: always
-
-logging:
-  level:
-    root: INFO
-    com.edulearn.auth: DEBUG
-    org.springframework.security: INFO
-
-springdoc:
-  api-docs:
-    enabled: true
-    path: /v3/api-docs
-  swagger-ui:
-    enabled: true
-    path: /swagger-ui.html
-
 application:
   security:
     jwt:
@@ -89,13 +60,18 @@ application:
       expiration: 86400000
 
   oauth2:
-    redirect-uri: http://localhost:4200/auth/google/callback
+    redirect-uri: https://edulearnweb.duckdns.org/auth/google/callback
 
   reset-password:
-    frontend-url: http://localhost:4200/auth/reset-password
+    frontend-url: https://edulearnweb.duckdns.org/auth/reset-password
 
 app:
   admin:
     email: ${ADMIN_EMAIL}
     password: ${ADMIN_PASSWORD}
     full-name: ${ADMIN_FULL_NAME}
+
+logging:
+  level:
+    root: INFO
+    com.edulearn.auth: INFO

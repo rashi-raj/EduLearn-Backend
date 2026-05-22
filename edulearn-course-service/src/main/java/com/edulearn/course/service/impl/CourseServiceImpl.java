@@ -131,6 +131,11 @@ public class CourseServiceImpl implements CourseService {
                     return new RuntimeException("Course not found");
                 });
 
+        if (course.getStatus() == CourseStatus.PUBLISHED) {
+            log.error("Attempted to update PUBLISHED course ID: {}", courseId);
+            throw new RuntimeException("Published courses cannot be edited to protect student enrollments. Please unpublish the course first.");
+        }
+
         course.setTitle(request.getTitle());
         course.setDescription(request.getDescription());
         course.setCategory(request.getCategory());
@@ -158,9 +163,15 @@ public class CourseServiceImpl implements CourseService {
     public void deleteCourse(UUID courseId) {
         log.info("Deleting course with ID: {}", courseId);
 
-        if (!courseRepository.existsById(courseId)) {
-            log.error("Course not found for deletion with ID: {}", courseId);
-            throw new RuntimeException("Course not found");
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> {
+                    log.error("Course not found for deletion with ID: {}", courseId);
+                    return new RuntimeException("Course not found");
+                });
+
+        if (course.getStatus() == CourseStatus.PUBLISHED) {
+            log.error("Attempted to delete PUBLISHED course ID: {}", courseId);
+            throw new RuntimeException("Published courses cannot be deleted while they are active.");
         }
 
         courseRepository.deleteById(courseId);
@@ -180,11 +191,16 @@ public class CourseServiceImpl implements CourseService {
         course.setIsPublished(published);
 
         if (Boolean.TRUE.equals(published)) {
-            course.setStatus(CourseStatus.PUBLISHED);
-            log.info("Course marked as PUBLISHED with ID: {}", courseId);
+            // To publish, the course MUST have been approved by Admin (status = PUBLISHED)
+            if (course.getStatus() != CourseStatus.PUBLISHED) {
+                log.error("Attempted to publish unapproved course ID: {}. Current status: {}", courseId, course.getStatus());
+                throw new RuntimeException("Course must be approved by admin before it can be published.");
+            }
+            course.setIsPublished(true);
+            log.info("Course marked as VISIBLE (isPublished=true) with ID: {}", courseId);
         } else {
-            course.setStatus(CourseStatus.DRAFT);
-            log.info("Course marked as DRAFT with ID: {}", courseId);
+            course.setIsPublished(false);
+            log.info("Course marked as HIDDEN (isPublished=false) with ID: {}", courseId);
         }
 
         Course updatedCourse = courseRepository.save(course);

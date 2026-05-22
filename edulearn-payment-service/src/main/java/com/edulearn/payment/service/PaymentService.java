@@ -70,6 +70,8 @@ public class PaymentService {
             payment.setReceipt(receipt);
             payment.setRazorpayOrderId(razorpayOrderId);
             payment.setCreatedAt(LocalDateTime.now());
+            payment.setInstructorId(request.getInstructorId());
+            payment.setPayoutStatus("PENDING");
 
             Payment saved = paymentRepository.save(payment);
 

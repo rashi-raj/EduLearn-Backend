@@ -33,6 +33,19 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
                 .toList();
     }
 
+    @Override
+    public void redirectPaymentToInstructor(java.util.UUID paymentId) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+        
+        if (payment.getPaymentStatus() != com.edulearn.payment.entity.PaymentStatus.SUCCESS) {
+            throw new RuntimeException("Only successful payments can be redirected to instructors.");
+        }
+        
+        payment.setPayoutStatus("REDIRECTED_TO_INSTRUCTOR");
+        paymentRepository.save(payment);
+    }
+
     private AdminPaymentResponse mapToResponse(Payment payment) {
         return AdminPaymentResponse.builder()
                 .paymentId(payment.getPaymentId())
@@ -50,6 +63,8 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
                 .razorpayPaymentId(payment.getRazorpayPaymentId())
                 .createdAt(payment.getCreatedAt())
                 .paidAt(payment.getPaidAt())
+                .instructorId(payment.getInstructorId())
+                .payoutStatus(payment.getPayoutStatus())
                 .build();
     }
 }

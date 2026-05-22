@@ -1,5 +1,7 @@
 services:
 
+  # ─── Infrastructure ───────────────────────────────────────────────────────────
+
   mysql:
     image: mysql:8.0
     container_name: edulearn-mysql
@@ -12,13 +14,20 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - edulearn-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: edulearn-phpmyadmin
     restart: always
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
@@ -36,17 +45,24 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_4LW_COMMANDS_WHITELIST: "*"
     ports:
       - "2181:2181"
     networks:
       - edulearn-network
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo ruok > /dev/tcp/localhost/2181' && echo 'OK' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     container_name: edulearn-kafka
     restart: always
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
     environment:
@@ -60,13 +76,20 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     networks:
       - edulearn-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: edulearn-kafka-ui
     restart: always
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     ports:
       - "8090:8080"
     environment:
@@ -85,6 +108,195 @@ services:
       - "50000:50000"
     volumes:
       - jenkins_data:/var/jenkins_home
+    networks:
+      - edulearn-network
+
+  # ─── Microservices ────────────────────────────────────────────────────────────
+
+  edulearn-service-registry:
+    build:
+      context: ./edulearn-service-registry
+    container_name: edulearn-service-registry
+    restart: always
+    ports:
+      - "8761:8761"
+    networks:
+      - edulearn-network
+
+  edulearn-api-gateway:
+    build:
+      context: ./edulearn-api-gateway
+    container_name: edulearn-api-gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+    depends_on:
+      - edulearn-service-registry
+    networks:
+      - edulearn-network
+
+  edulearn-auth-service:
+    build:
+      context: ./edulearn-auth-service
+    container_name: edulearn-auth-service
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      edulearn-service-registry:
+        condition: service_started
+    networks:
+      - edulearn-network
+
+  edulearn-course-service:
+    build:
+      context: ./edulearn-course-service
+    container_name: edulearn-course-service
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      edulearn-service-registry:
+        condition: service_started
+    networks:
+      - edulearn-network
+
+  edulearn-lesson-service:
+    build:
+      context: ./edulearn-lesson-service
+    container_name: edulearn-lesson-service
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      edulearn-service-registry:
+        condition: service_started
+    networks:
+      - edulearn-network
+
+  edulearn-enrollment-service:
+    build:
+      context: ./edulearn-enrollment-service
+    container_name: edulearn-enrollment-service
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      edulearn-service-registry:
+        condition: service_started
+    networks:
+      - edulearn-network
+
+  edulearn-assessment-service:
+    build:
+      context: ./edulearn-assessment-service
+    container_name: edulearn-assessment-service
+    restart: always
+    ports:
+      - "8085:8085"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      edulearn-service-registry:
+        condition: service_started
+    networks:
+      - edulearn-network
+
+  edulearn-progress-service:
+    build:
+      context: ./edulearn-progress-service
+    container_name: edulearn-progress-service
+    restart: always
+    ports:
+      - "8086:8086"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      edulearn-service-registry:
+        condition: service_started
+    networks:
+      - edulearn-network
+
+  edulearn-payment-service:
+    build:
+      context: ./edulearn-payment-service
+    container_name: edulearn-payment-service
+    restart: always
+    ports:
+      - "8087:8087"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      KEY_ID: ${KEY_ID}
+      KEY_SECRET: ${KEY_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      edulearn-service-registry:
+        condition: service_started
+    networks:
+      - edulearn-network
+
+  edulearn-notification-service:
+    build:
+      context: ./edulearn-notification-service
+    container_name: edulearn-notification-service
+    restart: always
+    ports:
+      - "8088:8088"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_WHATSAPP_NUMBER: ${TWILIO_WHATSAPP_NUMBER}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      edulearn-service-registry:
+        condition: service_started
     networks:
       - edulearn-network
 

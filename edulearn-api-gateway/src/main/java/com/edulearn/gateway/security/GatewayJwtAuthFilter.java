@@ -81,16 +81,6 @@ public class GatewayJwtAuthFilter extends OncePerRequestFilter {
             // Health monitoring — actuator endpoints
             "/actuator/**",
 
-            // Nuclear Fix: Whitelist all Admin actions and Course approval paths
-            "/api/v1/admin/**",
-            "/api/v1/courses/*/review",
-            "/api/v1/courses/*/approve",
-            "/api/v1/courses/*/reject",
-            "/api/v1/courses/*/submit-for-approval",
-            "/api/v1/courses/status/**",
-            "/api/v1/enrollments/**",
-            "/api/v1/payments/**",
-
             // CORS preflight — OPTIONS must never require a token
             "OPTIONS:/**"
     );

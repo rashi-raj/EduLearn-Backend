@@ -37,6 +37,13 @@ public class JwtService {
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        // Automatically inject roles into claims if not already present
+        if (!extraClaims.containsKey("role")) {
+            userDetails.getAuthorities().stream()
+                    .findFirst()
+                    .ifPresent(auth -> extraClaims.put("role", auth.getAuthority()));
+        }
+
         return Jwts.builder()
                 .claims(extraClaims)
                 .subject(userDetails.getUsername())

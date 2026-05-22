@@ -12,17 +12,14 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
   datasource:
-    url: jdbc:mysql://localhost:3306/edulearn_course_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
+    url: jdbc:mysql://localhost:3306/edulearn_courses?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: edulearn
     password: ${DB_PASSWORD}
 
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+    show-sql: false
 
 eureka:
   client:
@@ -31,24 +28,7 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-  endpoint:
-    health:
-      show-details: always
-
 logging:
   level:
     root: INFO
-    com.edulearn.course: DEBUG
-
-springdoc:
-  api-docs:
-    enabled: true
-    path: /v3/api-docs
-  swagger-ui:
-    enabled: true
-    path: /swagger-ui.html
+    com.edulearn.course: INFO

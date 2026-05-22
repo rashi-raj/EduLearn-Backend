@@ -70,30 +70,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/lessons/course/*/preview").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/enrollments/count/*").permitAll()
 
-                        // Developer tooling — Swagger, API docs, health checks
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/actuator/**"
                         ).permitAll()
-
-                        // ─────────────────────────────────────────────────────────
-                        // ALL OTHER REQUESTS → must have a valid JWT
-                        //
-                        // This single rule covers ALL current and FUTURE services.
-                        // When you add a new microservice route in application.yml,
-                        // it is automatically protected here — no code changes needed.
-                        // ─────────────────────────────────────────────────────────
-                        // Nuclear Fix: Permit all Admin and Course Review actions in the security chain
-                        .requestMatchers("/api/v1/admin/**").permitAll()
-                        .requestMatchers("/api/v1/courses/*/review").permitAll()
-                        .requestMatchers("/api/v1/courses/*/approve").permitAll()
-                        .requestMatchers("/api/v1/courses/*/reject").permitAll()
-                        .requestMatchers("/api/v1/courses/*/submit-for-approval").permitAll()
-                        .requestMatchers("/api/v1/courses/status/**").permitAll()
-                        .requestMatchers("/api/v1/payments/**").permitAll()
-                        .requestMatchers("/api/v1/enrollments/**").permitAll()
 
                         .anyRequest().authenticated()
                 )
