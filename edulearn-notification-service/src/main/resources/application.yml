@@ -1,0 +1,70 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: EDULEARN-NOTIFICATION-SERVICE
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/edulearn_notification_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: root
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: notification-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.edulearn.notification.dto.NotificationEvent
+        allow.auto.create.topics: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+
+logging:
+  level:
+    root: INFO
+    com.edulearn.notification: DEBUG
+    org.springframework.kafka: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+twilio:
+  account-sid: ${TWILIO_ACCOUNT_SID:PLACEHOLDER_SID}
+  auth-token: ${TWILIO_AUTH_TOKEN:PLACEHOLDER_TOKEN}
+  whatsapp-number: ${TWILIO_WHATSAPP_NUMBER:whatsapp:+17015027712}
+

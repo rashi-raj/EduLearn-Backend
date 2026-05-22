@@ -1,0 +1,182 @@
+pipeline {
+    agent any
+
+    tools {
+        jdk 'JDK17'
+        maven 'Maven3'
+    }
+
+    options {
+        timestamps()
+        timeout(time: 45, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    environment {
+        DB_PASSWORD = credentials('db-password')
+        JWT_SECRET_KEY = credentials('jwt-secret-key')
+
+        GOOGLE_CLIENT_ID = credentials('google-client-id')
+        GOOGLE_CLIENT_SECRET = credentials('google-client-secret')
+
+        MAIL_USERNAME = credentials('mail-username')
+        MAIL_PASSWORD = credentials('mail-password')
+
+        ADMIN_EMAIL = credentials('admin-email')
+        ADMIN_PASSWORD = credentials('admin-password')
+        ADMIN_FULL_NAME = credentials('admin-full-name')
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+                echo "Commit: ${env.GIT_COMMIT ?: 'N/A'}"
+            }
+        }
+
+        stage('Build Services') {
+            steps {
+                script {
+                    def services = [
+                        'edulearn-service-registry',
+                        'edulearn-api-gateway',
+                        'edulearn-auth-service',
+                        'edulearn-course-service',
+                        'edulearn-lesson-service',
+                        'edulearn-enrollment-service',
+                        'edulearn-assessment-service',
+                        'edulearn-payment-service',
+                        'edulearn-notification-service'
+                    ]
+
+                    for (svc in services) {
+                        dir(svc) {
+                            echo "=== Building ${svc} ==="
+                            sh 'mvn clean compile -DskipTests'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Test & Report') {
+            steps {
+                script {
+                    def services = [
+                        'edulearn-service-registry',
+                        'edulearn-api-gateway',
+                        'edulearn-auth-service',
+                        'edulearn-course-service',
+                        'edulearn-lesson-service',
+                        'edulearn-enrollment-service',
+                        'edulearn-assessment-service',
+                        'edulearn-payment-service',
+                        'edulearn-notification-service'
+                    ]
+
+                    for (svc in services) {
+                        dir(svc) {
+                            echo "=== Testing & Generating Reports for ${svc} ==="
+
+                            sh 'mvn verify -Dspring.profiles.active=test -Dtest="!*ApplicationTests" -Dsurefire.failIfNoSpecifiedTests=false'
+                        }
+                    }
+                }
+            }
+
+            post {
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    script {
+                        def services = [
+                            'edulearn-service-registry',
+                            'edulearn-api-gateway',
+                            'edulearn-auth-service',
+                            'edulearn-course-service',
+                            'edulearn-lesson-service',
+                            'edulearn-enrollment-service',
+                            'edulearn-assessment-service',
+                            'edulearn-payment-service',
+                            'edulearn-notification-service'
+                        ]
+
+                        for (svc in services) {
+                            dir(svc) {
+                                echo "=== SonarQube Analysis: ${svc} ==="
+
+                                sh """
+                                    mvn sonar:sonar \
+                                    -Dsonar.projectKey=${svc} \
+                                    -Dsonar.projectName=${svc} \
+                                    -Dsonar.host.url=http://host.docker.internal:9000 \
+                                    -Dsonar.token=$SONAR_TOKEN
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Package Services') {
+            steps {
+                script {
+                    def services = [
+                        'edulearn-service-registry',
+                        'edulearn-api-gateway',
+                        'edulearn-auth-service',
+                        'edulearn-course-service',
+                        'edulearn-lesson-service',
+                        'edulearn-enrollment-service',
+                        'edulearn-assessment-service',
+                        'edulearn-payment-service',
+                        'edulearn-notification-service'
+                    ]
+
+                    for (svc in services) {
+                        dir(svc) {
+                            echo "=== Packaging ${svc} ==="
+                            sh 'mvn package -DskipTests'
+                        }
+                    }
+                }
+            }
+
+            post {
+                success {
+                    archiveArtifacts artifacts: '**/target/*.jar',
+                                     fingerprint: true,
+                                     allowEmptyArchive: true
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '====================================='
+            echo ' EduLearn Pipeline: BUILD SUCCESS'
+            echo '====================================='
+        }
+
+        failure {
+            echo '====================================='
+            echo ' EduLearn Pipeline: BUILD FAILED'
+            echo '====================================='
+        }
+
+        always {
+            cleanWs()
+        }
+    }
+}

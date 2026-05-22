@@ -1,0 +1,28 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: EDULEARN-LESSON-SERVICE
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/edulearn_lessons?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: edulearn
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+
+logging:
+  level:
+    root: INFO
+    com.edulearn.lesson: INFO

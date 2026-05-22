@@ -1,0 +1,41 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: EDULEARN-PAYMENT-SERVICE
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/edulearn_payments?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: edulearn
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+razorpay:
+  key-id: ${KEY_ID}
+  key-secret: ${KEY_SECRET}
+  currency: INR
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+
+logging:
+  level:
+    root: INFO
+    com.edulearn.payment: INFO
